@@ -212,7 +212,6 @@
 #define GC_FIXGPS_ROUTE_FIX_DEGREE1     "<global-general>dataprocess/fixgps/route_degree1"
 #define GC_FIXGPS_ROUTE_FIX_DOAPPLY     "<global-general>dataprocess/fixgps/route_doapply"
 #define GC_FIXGPS_ROUTE_OUTLIER_PERCENT "<global-general>dataprocess/fixgps/route_outlier_percent"
-#define GC_ELEVATION_FIX_USE_CUSTOM_URL "<global-general>dataprocess/fixelevation/use_custom"
 #define GC_ELEVATION_FIX_URL            "<global-general>dataprocess/fixelevation/url"
 
 // device Configurations NAME/SPEC/TYPE/DEFI/DEFR all get a number appended

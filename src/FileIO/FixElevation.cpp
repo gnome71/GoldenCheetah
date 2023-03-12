@@ -31,7 +31,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
-#include <QDebug>
 
 struct elevationGPSPoint {
     int rideFileIndex;
@@ -84,7 +83,6 @@ class FixElevationConfig : public DataProcessorConfig
             eleUrlEdit->setText(eleUrl);
         }
         void saveConfig() {
-            qDebug("in save config");
             appsettings->setValue(GC_ELEVATION_FIX_URL, eleUrlEdit->text());
         }
 
@@ -125,7 +123,6 @@ static bool fixElevationAdded = DataProcessorFactory::instance().registerProcess
 bool
 FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString op="")
 {
-    //Q_UNUSED(config)
     Q_UNUSED(op)
 
     // Cannot process without GPS data
@@ -135,6 +132,7 @@ FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString
     int errors=0;
     QString eleUrl = "";
 
+    // Get server url from config
     if (config == NULL) {
         eleUrl = appsettings->value(NULL, GC_ELEVATION_FIX_URL, "https://api.open-elevation.com").toString();
     }

@@ -45,12 +45,29 @@ class FixElevationConfig : public DataProcessorConfig
     Q_DECLARE_TR_FUNCTIONS(FixElevationConfig)
     friend class ::FixElevation;
     protected:
+        QHBoxLayout *layout;
+        QLabel *eleUrlLabel;
+        QLineEdit *eleUrlEdit;
+
     public:
-        // there is no config
         FixElevationConfig(QWidget *parent) : DataProcessorConfig(parent) {
 
             HelpWhatsThis *help = new HelpWhatsThis(parent);
             parent->setWhatsThis(help->getWhatsThisText(HelpWhatsThis::MenuBar_Edit_FixElevationErrors));
+
+            layout = new QHBoxLayout(this);
+            layout->setContentsMargins(0,0,0,0);
+            setContentsMargins(0,0,0,0);
+
+            eleUrlLabel = new QLabel(tr("Server"));
+            eleUrlEdit = new QLineEdit("https://api.open-elevation.com");
+            eleUrlEdit->setToolTip(tr("If you want to use a custom open-elevation server\n"
+                                      "enter the url in this field.\n"
+                                      "Default: https://api.open-elevation.com"));
+
+            layout->addWidget(eleUrlLabel);
+            layout->addWidget(eleUrlEdit);
+            layout->addStretch();
         }
 
         QString explain() {
@@ -61,8 +78,13 @@ class FixElevationConfig : public DataProcessorConfig
                       "\n\nINTERNET CONNECTION REQUIRED.");
         }
 
-        void readConfig() {}
-        void saveConfig() {}
+        void readConfig() {
+            QString eleUrl = appsettings->value(NULL, GC_ELEVATION_FIX_URL, "https://api.open-elevation.com").toString();
+            eleUrlEdit->setText(eleUrl);
+        }
+        void saveConfig() {
+            appsettings->setValue(GC_ELEVATION_FIX_URL, eleUrlEdit->text());
+        }
 
 };
 
@@ -93,7 +115,7 @@ class FixElevation : public DataProcessor {
         }
 
     private:
-        QList<double> FetchElevationData(QString latLngCollection);
+        QList<double> FetchElevationData(QString latLngCollection, QString url);
 };
 
 static bool fixElevationAdded = DataProcessorFactory::instance().registerProcessor(QString("Fix Elevation errors"), new FixElevation());
@@ -101,14 +123,22 @@ static bool fixElevationAdded = DataProcessorFactory::instance().registerProcess
 bool
 FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString op="")
 {
-    Q_UNUSED(config)
     Q_UNUSED(op)
 
-    // Cannot process without without GPS data
+    // Cannot process without GPS data
     if (!ride || ride->areDataPresent()->lat == false || ride->areDataPresent()->lon == false)
         return false;
 
     int errors=0;
+    QString eleUrl = "";
+
+    // Get server url from config
+    if (config == NULL) {
+        eleUrl = appsettings->value(NULL, GC_ELEVATION_FIX_URL, "https://api.open-elevation.com").toString();
+    }
+    else {
+        eleUrl = (QString)((FixElevationConfig*)(config))->eleUrlEdit->text();
+    }
 
     std::vector<elevationGPSPoint> elvPoints;
 
@@ -158,7 +188,7 @@ FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString
             // To avoid 302 error for longer rides we break requests in 2000 points chunks
             if (pointCount == 2000) {
                 latLngCollection.append("]}");
-                elevationPoints = elevationPoints + FetchElevationData(latLngCollection);
+                elevationPoints = elevationPoints + FetchElevationData(latLngCollection, eleUrl);
                 latLngCollection = "";
                 pointCount = 0;
             } else {
@@ -169,7 +199,7 @@ FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString
         // send a request for the remainder points, currently all at once for efficiency
         if (pointCount > 0) {
             latLngCollection.append("]}");
-            elevationPoints = elevationPoints + FetchElevationData(latLngCollection);
+            elevationPoints = elevationPoints + FetchElevationData(latLngCollection, eleUrl);
         }
 
     } catch (QString err) {
@@ -273,11 +303,11 @@ FixElevation::postProcess(RideFile *ride, DataProcessorConfig *config=0, QString
 }
 
 QList<double>
-FixElevation::FetchElevationData(QString latLngCollection)
+FixElevation::FetchElevationData(QString latLngCollection, QString url)
 {
     QList<double> elevationPoints;
 
-    QNetworkRequest request(QUrl(QString("https://api.open-elevation.com/api/v1/lookup")));
+    QNetworkRequest request(QUrl(QString(url + "/api/v1/lookup")));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Accept", "application/json");
 
